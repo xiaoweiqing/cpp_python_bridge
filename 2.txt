@@ -1,0 +1,47 @@
+# =================================================================
+#     CMakeLists.txt (V16.0 - 最终路径修正版)
+# =================================================================
+cmake_minimum_required(VERSION 3.12)
+project(cpp_python_bridge)
+
+# --- 路径定义 ---
+# 【【【 终极修正：指向我们编译新版本 llama.cpp 时使用的正确路径 】】】
+set(LLAMA_CPP_SRC_DIR /home/weiyubin/llama.cpp)
+set(LLAMA_CPP_BUILD_DIR /home/weiyubin/llama.cpp/build-vulkan-official/bin)
+
+# --- 查找核心的 libllama.so 库 ---
+find_library(LLAMA_LIBRARY NAMES llama HINTS ${LLAMA_CPP_BUILD_DIR})
+if(NOT LLAMA_LIBRARY)
+    message(FATAL_ERROR "Could not find libllama.so in ${LLAMA_CPP_BUILD_DIR}")
+endif()
+
+# --- pybind11 ---
+add_subdirectory(pybind11)
+
+# --- pybind11 模块定义 ---
+# 【【【 终极简化：我们只编译自己的桥接代码，其他依赖由 libllama.so 提供 】】】
+pybind11_add_module(my_bridge
+    src/bridge.cpp
+)
+
+# --- 包含所有必要的头文件 ---
+# (这些路径是正确的，必须保留)
+target_include_directories(my_bridge PRIVATE
+    "${LLAMA_CPP_SRC_DIR}/include"
+    "${LLAMA_CPP_SRC_DIR}/common"
+    "${LLAMA_CPP_SRC_DIR}/ggml/include"
+)
+
+# --- 链接核心的 libllama.so ---
+target_link_libraries(my_bridge PRIVATE
+    ${LLAMA_LIBRARY}
+)
+
+# --- 设置 RPATH，确保运行时能找到 libllama.so ---
+target_link_options(my_bridge PRIVATE "-Wl,-rpath,${LLAMA_CPP_BUILD_DIR}")
+
+# --- 设置 C++ 标准 ---
+set_target_properties(my_bridge PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+)
